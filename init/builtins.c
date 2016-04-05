@@ -185,7 +185,7 @@ static int __ifupdown(const char *interface, int up)
         ifr.ifr_flags &= ~IFF_UP;
 
     ret = ioctl(s, SIOCSIFFLAGS, &ifr);
-    
+
 done:
     close(s);
     return ret;
@@ -528,9 +528,19 @@ int do_mount_all(int nargs, char **args)
             ret = -1;
         }
     } else if (pid == 0) {
+        char tmp[PROP_VALUE_MAX];
+
         /* child, call fs_mgr_mount_all() */
         klog_set_level(6);  /* So we can see what fs_mgr_mount_all() does */
-        fstab = fs_mgr_read_fstab(args[1]);
+
+        if (property_get("ro.bootdev", tmp)) {
+          char fpath[PATH_MAX];
+          sprintf(fpath, "%s.%s", args[1], tmp);
+          fstab = fs_mgr_read_fstab(fpath);
+        } else {
+          fstab = fs_mgr_read_fstab(args[1]);
+        }
+
         child_ret = fs_mgr_mount_all(fstab);
         fs_mgr_free_fstab(fstab);
         if (child_ret == -1) {
@@ -727,7 +737,7 @@ int do_sysclktz(int nargs, char **args)
         return -1;
 
     memset(&tz, 0, sizeof(tz));
-    tz.tz_minuteswest = atoi(args[1]);   
+    tz.tz_minuteswest = atoi(args[1]);
     if (settimeofday(NULL, &tz))
         return -1;
     return 0;
@@ -760,10 +770,10 @@ int do_copy(int nargs, char **args)
     if (nargs != 3)
         return -1;
 
-    if (stat(args[1], &info) < 0) 
+    if (stat(args[1], &info) < 0)
         return -1;
 
-    if ((fd1 = open(args[1], O_RDONLY)) < 0) 
+    if ((fd1 = open(args[1], O_RDONLY)) < 0)
         goto out_err;
 
     if ((fd2 = open(args[2], O_WRONLY|O_CREAT|O_TRUNC, 0660)) < 0)
